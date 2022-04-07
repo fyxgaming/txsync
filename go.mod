@@ -7,6 +7,7 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/libsv/go-bt v1.0.6
 	github.com/ordishs/go-bitcoin v1.0.63
+	github.com/zenthangplus/goccm v0.0.0-20211005163543-2f2e522aca15
 )
 
 require (

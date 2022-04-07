@@ -22,8 +22,7 @@ import (
 var bit *bitcoin.Bitcoind
 
 const QUEUE_LENGTH = 10000
-
-// const CONCURRENCY = 16
+const CONCURRENCY = 16
 
 const API = "https://bsv.fyxgaming.com"
 
@@ -57,7 +56,7 @@ func init() {
 }
 
 func main() {
-	queue := make(chan *txn)
+	queue := make(chan *txn, QUEUE_LENGTH)
 	go func() {
 		var seq uint64
 		for {
@@ -78,21 +77,24 @@ func main() {
 	// inFlight := 0
 	batchCount := 0
 
-	// done := make(chan bool)
+	workers := make(chan bool, CONCURRENCY)
 	for {
 		tx := <-queue
 		// log.Println("PROCESSING:", tx.Tx.GetTxID())
+		workers <- true
+
 		go func(tx *txn) {
 			rawtx := tx.Tx.ToString()
 			txid, err := bit.SendRawTransaction(rawtx)
 			if err != nil {
-				if !strings.Contains(err.Error(), "Transaction already in the mempool") {
+				txid = tx.Tx.GetTxID()
+				if !strings.Contains(err.Error(), "Transaction already in the mempool") &&
+					!strings.Contains(err.Error(), "txn-already-known") {
 					log.Println("ERROR:", txid, len(rawtx)/2, err.Error())
 					queue <- tx
-					// done <- true
+					<-workers
 					return
 				}
-				txid = tx.Tx.GetTxID()
 				batchCount++
 				log.Println("SUCCESS:", txid, len(rawtx)/2, "txn-already-known")
 			} else {
@@ -115,22 +117,12 @@ func main() {
 			delete(txns, txid)
 			delete(children, txid)
 			m.Unlock()
-			// log.Println("Done Updating")
-			// log.Println("Queuing Children")
 			for _, child := range toQueue {
 				log.Println("Queuing Child:", txid, child.Tx.GetTxID(), len(child.Parents))
 				queue <- child
 			}
-			// log.Println("Done Queuing")
-
-			// done <- true
+			<-workers
 		}(tx)
-
-		// inFlight++
-		// if inFlight > CONCURRENCY {
-		// 	<-done
-		// 	inFlight--
-		// }
 	}
 }
 
@@ -173,7 +165,6 @@ func loadQueue(seq uint64, queue chan *txn) uint64 {
 			break
 		}
 		txid := tx.Tx.GetTxID()
-		// log.Println("IMPORT:", txid)
 		m.Lock()
 		children[txid] = make(map[string]bool)
 		for _, txin := range tx.Tx.Inputs {
@@ -184,7 +175,6 @@ func loadQueue(seq uint64, queue chan *txn) uint64 {
 		}
 		txns[txid] = tx
 		m.Unlock()
-		// log.Println("PARENTS:", txid, len(tx.Parents))
 		if len(tx.Parents) == 0 {
 			queue <- &tx
 		}
