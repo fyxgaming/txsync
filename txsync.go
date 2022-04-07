@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -22,6 +23,10 @@ var bit *bitcoin.Bitcoind
 
 const QUEUE_LENGTH = 1000
 const CONCURRENCY = 16
+
+const API = "https://bsv.fyxgaming.com"
+
+// const API = "http://localhost:8080"
 
 type txn struct {
 	Tx      *bt.Tx
@@ -88,9 +93,9 @@ func main() {
 				}
 				txid = tx.Tx.GetTxID()
 				batchCount++
-				// log.Println("SUCCESS:", txid, len(rawtx)/2)
+				log.Println("SUCCESS:", txid, len(rawtx)/2)
 			} else {
-				// log.Println("SUCCESS:", txid, len(rawtx)/2)
+				log.Println("SUCCESS:", txid, len(rawtx)/2)
 				batchCount++
 			}
 
@@ -131,7 +136,7 @@ func main() {
 func loadQueue(seq uint64, queue chan *txn) uint64 {
 	log.Println("LOAD PAGE")
 	client := resty.New()
-	resp, err := client.R().Get(fmt.Sprintf("https://bsv.fyxgaming.com/txsync/%d", seq))
+	resp, err := client.R().Get(fmt.Sprintf("%s/txsync/%d", API, seq))
 	if err != nil {
 		log.Println("Get Batch Error:", err)
 		return seq
@@ -155,7 +160,13 @@ func loadQueue(seq uint64, queue chan *txn) uint64 {
 		tx := txn{
 			Parents: make(map[string]bool, 0),
 		}
-		tx.Tx, err = bt.NewTxFromString(record[1])
+
+		txbuf, err := base64.StdEncoding.DecodeString(record[1])
+		if err != nil {
+			log.Println("DecodeString Error:", err)
+			break
+		}
+		tx.Tx, err = bt.NewTxFromBytes(txbuf)
 		if err != nil {
 			log.Println("Parse Txn Error:", err)
 			break
