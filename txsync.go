@@ -94,7 +94,7 @@ func main() {
 				}
 				txid = tx.Tx.GetTxID()
 				batchCount++
-				log.Println("SUCCESS:", txid, len(rawtx)/2)
+				log.Println("SUCCESS:", txid, len(rawtx)/2, "txn-already-known")
 			} else {
 				log.Println("SUCCESS:", txid, len(rawtx)/2)
 				batchCount++
