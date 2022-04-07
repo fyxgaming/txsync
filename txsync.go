@@ -21,8 +21,9 @@ import (
 
 var bit *bitcoin.Bitcoind
 
-const QUEUE_LENGTH = 1000
-const CONCURRENCY = 16
+const QUEUE_LENGTH = 10000
+
+// const CONCURRENCY = 16
 
 const API = "https://bsv.fyxgaming.com"
 
@@ -74,10 +75,10 @@ func main() {
 		}
 	}()
 
-	inFlight := 0
+	// inFlight := 0
 	batchCount := 0
 
-	done := make(chan bool)
+	// done := make(chan bool)
 	for {
 		tx := <-queue
 		// log.Println("PROCESSING:", tx.Tx.GetTxID())
@@ -88,7 +89,7 @@ func main() {
 				if !strings.Contains(err.Error(), "Transaction already in the mempool") {
 					log.Println("ERROR:", txid, len(rawtx)/2, err.Error())
 					queue <- tx
-					done <- true
+					// done <- true
 					return
 				}
 				txid = tx.Tx.GetTxID()
@@ -117,19 +118,19 @@ func main() {
 			// log.Println("Done Updating")
 			// log.Println("Queuing Children")
 			for _, child := range toQueue {
-				// log.Println("Queuing Child:", txid, child.Tx.GetTxID(), len(child.Parents))
+				log.Println("Queuing Child:", txid, child.Tx.GetTxID(), len(child.Parents))
 				queue <- child
 			}
 			// log.Println("Done Queuing")
 
-			done <- true
+			// done <- true
 		}(tx)
 
-		inFlight++
-		if inFlight > CONCURRENCY {
-			<-done
-			inFlight--
-		}
+		// inFlight++
+		// if inFlight > CONCURRENCY {
+		// 	<-done
+		// 	inFlight--
+		// }
 	}
 }
 
