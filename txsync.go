@@ -74,15 +74,20 @@ func main() {
 		}
 	}()
 
-	// inFlight := 0
-	batchCount := 0
-
 	workers := make(chan bool, CONCURRENCY)
+	batchCount := 0
+	batchStart := time.Now()
 	for {
 		tx := <-queue
 		// log.Println("PROCESSING:", tx.Tx.GetTxID())
-		workers <- true
+		elapsed := time.Since(batchStart)
+		if elapsed > time.Second*10 {
+			log.Println("BATCH:", batchCount, elapsed)
+			batchCount = 0
+			batchStart = time.Now()
+		}
 
+		workers <- true
 		go func(tx *txn) {
 			rawtx := tx.Tx.ToString()
 			txid, err := bit.SendRawTransaction(rawtx)
@@ -118,7 +123,7 @@ func main() {
 			delete(children, txid)
 			m.Unlock()
 			for _, child := range toQueue {
-				log.Println("Queuing Child:", txid, child.Tx.GetTxID(), len(child.Parents))
+				// log.Println("Queuing Child:", txid, child.Tx.GetTxID(), len(child.Parents))
 				queue <- child
 			}
 			<-workers
@@ -127,11 +132,15 @@ func main() {
 }
 
 func loadQueue(seq uint64, queue chan *txn) uint64 {
-	log.Println("LOAD PAGE")
+	// log.Println("LOAD PAGE")
 	client := resty.New()
 	resp, err := client.R().Get(fmt.Sprintf("%s/txsync/%d", API, seq))
 	if err != nil {
 		log.Println("Get Batch Error:", err)
+		return seq
+	}
+	if resp.StatusCode() > 399 {
+		log.Println("Get Batch HTTP Error:", resp.StatusCode(), resp.Body())
 		return seq
 	}
 
