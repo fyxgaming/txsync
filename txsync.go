@@ -95,9 +95,7 @@ func main() {
 				txid = tx.Tx.GetTxID()
 				if !strings.Contains(err.Error(), "Transaction already in the mempool") &&
 					!strings.Contains(err.Error(), "txn-already-known") {
-					log.Println("ERROR:", txid, len(rawtx)/2, err.Error())
-					queue <- tx
-					<-workers
+					log.Panicln("ERROR:", txid, len(rawtx)/2, err.Error())
 					return
 				}
 				batchCount++
@@ -139,7 +137,7 @@ func loadQueue(seq uint64, queue chan *txn) uint64 {
 		log.Println("Get Batch Error:", err)
 		return seq
 	}
-	if resp.StatusCode() > 399 {
+	if resp.StatusCode() >= 400 {
 		log.Println("Get Batch HTTP Error:", resp.StatusCode(), resp.Body())
 		return seq
 	}
