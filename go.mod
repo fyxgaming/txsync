@@ -3,11 +3,11 @@ module fyx/txsync
 go 1.17
 
 require (
+	github.com/donovanhide/eventsource v0.0.0-20210830082556-c59027999da0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/joho/godotenv v1.4.0
 	github.com/libsv/go-bt v1.0.6
 	github.com/ordishs/go-bitcoin v1.0.63
-	github.com/zenthangplus/goccm v0.0.0-20211005163543-2f2e522aca15
 )
 
 require (
